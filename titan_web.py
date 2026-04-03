@@ -9,7 +9,7 @@ import os
 # ==========================================
 # VIP TASARIM & CSS
 # ==========================================
-st.set_page_config(page_title="TITAN PRO V.22 - FINAL", layout="wide")
+st.set_page_config(page_title="TITAN PRO V.23 - ULTRA STABLE", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,9 +24,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# KURŞUN GEÇİRMEZ VERİ YÜKLEME (ULTRA SAFE)
+# EN GÜVENLİ VERİ YÜKLEME (Sıfır Cache, Sıfır String Cast)
 # ==========================================
-@st.cache_data
 def load_data_final():
     filename = "data.xlsb" 
     try:
@@ -34,30 +33,36 @@ def load_data_final():
             st.error(f"❌ DOSYA BULUNAMADI! GitHub'da '{filename}' dosyası yok.")
             return None
         
-        # Dosyayı oku
+        # 1. Dosyayı ham haliyle oku
         df = pd.read_excel(filename, sheet_name="Sayfa1", engine="pyxlsb")
         
-        # Sayısal olması gereken sütunlar
+        # Sayısal olması gereken sütun indeksleri
         SAYI_SUTUNLAR = [4,5,6,7,8,9,10,11,12,13,14,15,24,25,26,27,28,29,36,37,38,39,40,41]
         
         for c in SAYI_SUTUNLAR:
             if c < len(df.columns):
-                # TOPLU ÇEVİRİ YERİNE TEK TEK (LAMBDA) ÇEVİRİ YAPALIM
-                # Bu yöntem Pandas'ın 'Invalid value for dtype str' hatasını %100 engeller.
-                df.iloc[:, c] = df.iloc[:, c].apply(
-                    lambda x: str(x).replace(',', '.').strip() if pd.notnull(x) else "0.0"
-                )
-                # Şimdi güvenle sayıya çevirebiliriz
-                df.iloc[:, c] = pd.to_numeric(df.iloc[:, c], errors='coerce').fillna(0.0)
+                # KRİTİK DEĞİŞİKLİK: str() veya apply() ASLA KULLANMIYORUZ.
+                # Sadece virgülleri nokta yapıp direkt sayıya zorluyoruz.
+                col_raw = df.iloc[:, c]
+                
+                # Eğer sütun zaten sayıysa, sadece boşlukları doldur
+                if pd.api.types.is_numeric_dtype(col_raw):
+                    df.iloc[:, c] = col_raw.fillna(0.0)
+                else:
+                    # Metinse, önce virgülleri nokta yap (sadece seri bazında) sonra sayıya çevir
+                    df.iloc[:, c] = pd.to_numeric(
+                        col_raw.astype(str).str.replace(',', '.'), 
+                        errors='coerce'
+                    ).fillna(0.0)
         
         return df
 
     except Exception as e:
-        st.error(f"❌ KRİTİK HATA: {str(e)}")
+        st.error(f"❌ VERİ OKUMA HATASI: {str(e)}")
         return None
 
 # ==========================================
-# ANALİZ FONKSİYONLARI
+# ANALİZ FONKSİYONLARI (STABİL)
 # ==========================================
 def calculate_weight(date_val):
     try:
@@ -71,10 +76,6 @@ def calculate_confidence(sample_size):
     if sample_size < 5: return "Çok Düşük"
     if sample_size < 15: return "Orta"
     return "Yüksek"
-
-def get_implied_probability(odds):
-    try: return (1 / float(odds)) * 100
-    except: return 0
 
 def get_matches_advanced(ms_val, iy_val, tolerans_degeri, lig_val="TÜM LİGLER", birebir_mod=False):
     if df_master is None: return None
@@ -93,7 +94,6 @@ def get_matches_advanced(ms_val, iy_val, tolerans_degeri, lig_val="TÜM LİGLER"
             mask = (1 - (dist / 0.5)) * 100 >= tolerans_degeri
             
         sonuclar = temp[mask].copy()
-
         if lig_val != "TÜM LİGLER":
             sonuclar = sonuclar[sonuclar.iloc[:, 0].astype(str).str.upper().str.contains(lig_val.upper(), na=False)]
         
@@ -104,11 +104,13 @@ def get_matches_advanced(ms_val, iy_val, tolerans_degeri, lig_val="TÜM LİGLER"
 # ==========================================
 # ANA ARAYÜZ
 # ==========================================
-st.markdown("<h2 style='text-align: center; color: #ea580c;'>🚜 TITAN PRO V.22 - FINAL</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #ea580c;'>🚜 TITAN PRO V.23 - ULTRA STABLE</h2>", unsafe_allow_html=True)
 
+# ÖNEMLİ: @st.cache_data'yı kaldırdık, her seferinde temiz okuma yapacak.
 df_master = load_data_final()
 
 if df_master is None: 
+    st.warning("Veri yüklenemedi. Lütfen data.xlsb dosyasını kontrol et.")
     st.stop()
 
 ligler_listesi = ["TÜM LİGLER"] + sorted(df_master.iloc[:, 0].dropna().astype(str).unique().tolist())
@@ -155,7 +157,7 @@ with tabs[0]:
                 st.warning("Eşleşme bulunamadı.")
 
 with tabs[1]:
-    st.info("Analiz panelini kullanarak ters dönme ihtimallerini görebilirsiniz.")
+    st.info("Analiz panelini kullanarak sonuçları inceleyebilirsiniz.")
 
 with tabs[2]:
-    st.info("Ağırlıklı analiz sistemi devrededir.")
+    st.info("Sistem en stabil modda çalışmaktadır.")
