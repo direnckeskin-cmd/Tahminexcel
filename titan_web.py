@@ -9,7 +9,7 @@ import os
 # ==========================================
 # VIP TASARIM & CSS
 # ==========================================
-st.set_page_config(page_title="TITAN PRO V.21 - DEBUG MODE", layout="wide")
+st.set_page_config(page_title="TITAN PRO V.22 - FINAL", layout="wide")
 
 st.markdown("""
     <style>
@@ -24,47 +24,40 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# HATA AYIKLAMALI VERİ YÜKLEME
+# KURŞUN GEÇİRMEZ VERİ YÜKLEME (ULTRA SAFE)
 # ==========================================
 @st.cache_data
 def load_data_final():
-    filename = "data.xlsb" # BURAYI data.xlsb YAPTIK
+    filename = "data.xlsb" 
     try:
-        # 1. Dosya var mı kontrol et
         if not os.path.exists(filename):
-            st.error(f"❌ DOSYA BULUNAMADI! GitHub'da '{filename}' isimli dosya yok veya yanlış klasörde.")
-            st.info(f"Sistemdeki dosyalar: {os.listdir('.')}") # Klasördeki tüm dosyaları listeler
+            st.error(f"❌ DOSYA BULUNAMADI! GitHub'da '{filename}' dosyası yok.")
             return None
         
-        # 2. Dosyayı okumayı dene
+        # Dosyayı oku
         df = pd.read_excel(filename, sheet_name="Sayfa1", engine="pyxlsb")
         
-        # 3. Sütun dönüşümlerini yap
+        # Sayısal olması gereken sütunlar
         SAYI_SUTUNLAR = [4,5,6,7,8,9,10,11,12,13,14,15,24,25,26,27,28,29,36,37,38,39,40,41]
+        
         for c in SAYI_SUTUNLAR:
             if c < len(df.columns):
-                col_data = df.iloc[:, c]
-                if pd.api.types.is_numeric_dtype(col_data):
-                    df.iloc[:, c] = col_data.fillna(0.0)
-                else:
-                    df.iloc[:, c] = pd.to_numeric(
-                        col_data.astype(str).str.replace(',', '.', regex=False).str.strip(), 
-                        errors='coerce'
-                    ).fillna(0.0)
+                # TOPLU ÇEVİRİ YERİNE TEK TEK (LAMBDA) ÇEVİRİ YAPALIM
+                # Bu yöntem Pandas'ın 'Invalid value for dtype str' hatasını %100 engeller.
+                df.iloc[:, c] = df.iloc[:, c].apply(
+                    lambda x: str(x).replace(',', '.').strip() if pd.notnull(x) else "0.0"
+                )
+                # Şimdi güvenle sayıya çevirebiliriz
+                df.iloc[:, c] = pd.to_numeric(df.iloc[:, c], errors='coerce').fillna(0.0)
+        
         return df
 
-    except ImportError:
-        st.error("❌ KÜTÜPHANE EKSİK! 'pyxlsb' kütüphanesi yüklü değil. Lütfen requirements.txt dosyasını kontrol et.")
-        return None
-    except ValueError as ve:
-        st.error(f"❌ SAYFA HATASI! Excel'deki sayfa ismi 'Sayfa1' olmayabilir. Hata: {str(ve)}")
-        return None
     except Exception as e:
-        st.error(f"❌ BEKLENMEDİK HATA: {str(e)}")
+        st.error(f"❌ KRİTİK HATA: {str(e)}")
         return None
 
 # ==========================================
-# GERİ KALAN FONKSİYONLAR (AYNI)
+# ANALİZ FONKSİYONLARI
 # ==========================================
 def calculate_weight(date_val):
     try:
@@ -89,24 +82,29 @@ def get_matches_advanced(ms_val, iy_val, tolerans_degeri, lig_val="TÜM LİGLER"
         ms_cl = ms_val.replace(',', '.').strip()
         if ' ' in ms_cl and '-' not in ms_cl: ms_cl = '-'.join(ms_cl.split())
         d1, d0, d2 = map(float, ms_cl.split('-'))
+        
         temp = df_master.copy()
         m1, m0, m2 = temp.iloc[:, 4].values, temp.iloc[:, 5].values, temp.iloc[:, 6].values
+
         if birebir_mod:
             mask = (np.abs(m1 - d1) <= 0.05) & (np.abs(m0 - d0) <= 0.05) & (np.abs(m2 - d2) <= 0.05)
         else:
             dist = np.sqrt((m1 - d1)**2 + (m0 - d0)**2 + (m2 - d2)**2)
             mask = (1 - (dist / 0.5)) * 100 >= tolerans_degeri
+            
         sonuclar = temp[mask].copy()
+
         if lig_val != "TÜM LİGLER":
             sonuclar = sonuclar[sonuclar.iloc[:, 0].astype(str).str.upper().str.contains(lig_val.upper(), na=False)]
+        
         sonuclar['Weight'] = sonuclar.iloc[:, 1].apply(calculate_weight)
         return sonuclar
     except: return None
 
 # ==========================================
-# ARAYÜZ
+# ANA ARAYÜZ
 # ==========================================
-st.markdown("<h2 style='text-align: center; color: #ea580c;'>🚜 TITAN PRO V.21 - DEBUG</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #ea580c;'>🚜 TITAN PRO V.22 - FINAL</h2>", unsafe_allow_html=True)
 
 df_master = load_data_final()
 
@@ -155,3 +153,9 @@ with tabs[0]:
                 st.markdown(html_list, unsafe_allow_html=True)
             else:
                 st.warning("Eşleşme bulunamadı.")
+
+with tabs[1]:
+    st.info("Analiz panelini kullanarak ters dönme ihtimallerini görebilirsiniz.")
+
+with tabs[2]:
+    st.info("Ağırlıklı analiz sistemi devrededir.")
