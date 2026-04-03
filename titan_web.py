@@ -69,7 +69,7 @@ def get_implied_probability(odds):
 @st.cache_data
 def load_data_final():
     try:
-        df = pd.read_excel("ORAN ANALİZ TABLOSU.xlsb", sheet_name="Sayfa1", engine="pyxlsb")
+        df = pd.read_excel("data.xlsb", sheet_name="Sayfa1", engine="pyxlsb")
         
         # Sayısal olması gereken sütunların indeksleri
         SAYI_SUTUNLAR = [4,5,6,7,8,9,10,11,12,13,14,15,24,25,26,27,28,29,36,37,38,39,40,41]
